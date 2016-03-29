@@ -1,0 +1,197 @@
+#! /usr/local/bin/perl
+
+#use strict;
+#use warnings;
+require "dbpath.pl";
+require "$realpath";
+use DBI;
+use Data::Dumper qw(Dumper);
+use Net::SNMP qw(:snmp);
+
+my $OID_ifTable = '1.3.6.1.2.1.2.2.1.1';
+my $OID_ifType = '1.3.6.1.2.1.2.2.1.3';
+my $OID_ifOperStatus = '1.3.6.1.2.1.2.2.1.8'; 
+my $OID_ifSpeed = '1.3.6.1.2.1.2.2.1.5';
+
+my %data;
+my %hash;
+#database connection 
+$dsn = "DBI:mysql:database=$database;host=$hostname;port=$port";
+$dbh = DBI->connect($dsn, $username, $password,{RaiseError => 1});
+
+#retrivind data from database
+my $data = $dbh->selectall_hashref("SELECT * FROM DEVICES","id");
+#print Dumper \%$data;
+foreach(keys (%{$data}))
+{
+  $id=$data->{$_}->{id};
+  $ip=$data->{$_}->{IP};
+  $community=$data->{$_}->{COMMUNITY};
+  $port=$data->{$_}->{PORT};
+$table{"$ip:$port:$community"}{'ip'}="$ip";
+$table{"$ip:$port:$community"}{'port'}="$port";
+$table{"$ip:$port:$community"}{'community'}="$community";
+
+my ($session, $error) = Net::SNMP->session(
+      -hostname    => $ip,
+      -port        => $port,
+      -community   => $community,
+      -nonblocking => 1,
+      -translate   => [-octetstring => 0],
+      -version     => 'snmpv2c',
+   );
+$hash{"$ip:$port:$community"}{"session"}=$session;
+
+   if (!defined $session) {
+      printf "ERROR: %s.\n", $error;
+      exit 1;
+   }
+
+   my %table; 
+
+if (!defined $session->get_table(-baseoid  => $OID_ifTable,
+                                 -callback => [\&print_interface_table,$ip,$port,$community],))
+{
+   printf "ERROR: %s.\n", $session->error();
+}
+ if (!defined $session) {
+               printf "ERROR: %s.\n", $error;
+      exit 1;
+      }
+
+}
+
+
+snmp_dispatcher();
+# concetenation of oids
+foreach $t (keys %table)
+{
+@asd = keys (%{$table{$t}{"interfaces"}});
+foreach $x (@asd)
+{
+$type=("1.3.6.1.2.1.2.2.1.3.$x");
+$table{"$t"}{"unfil"}{$type}=$type;
+
+$oper=("1.3.6.1.2.1.2.2.1.8.$x");
+$table{"$t"}{"unfil"}{$oper}=$oper;
+
+$speed=("1.3.6.1.2.1.2.2.1.5.$x");
+$table{"$t"}{"unfil"}{$speed}=$speed;
+}
+
+@oids = keys (%{$table{$t}{"unfil"}});
+if(@oids)
+{
+if (!defined $hash{$t}{"session"}) {
+               printf "ERROR: %s.\n", $error;
+      exit 1;
+      }
+while(@oids)
+{
+
+if (!defined $hash{$t}{"session"}->get_request(
+         -varbindlist => [splice @oids, 0, 40],
+         -callback    => [ \&oid_request,$table{$t}{"ip"},$table{$t}{"port"},$table{$t}{"community"}]))
+{
+   printf "ERROR: %s.\n", $hash{$t}{"session"}->error();
+}
+}
+}
+}
+
+snmp_dispatcher();
+
+foreach $t (keys %table)
+{
+  @req = keys (%{$table{$t}{"request"}});
+foreach $x (@req)
+{
+if ($table{$t}{"request"}{$x}{"1.3.6.1.2.1.2.2.1.3.$x"}!=24&&$table{$t}{"request"}{$x}{"1.3.6.1.2.1.2.2.1.5.$x"}>0&&$table{$t}{"request"}{$x}{"1.3.6.1.2.1.2.2.1.8.$x"}==1)
+{
+$type=("1.3.6.1.2.1.2.2.1.10.$x");
+$table{$t}{"filt"}{$x}=$x;
+$table{$t}{"unbyte"}{$type}=$type;
+$type=("1.3.6.1.2.1.2.2.1.16.$x");
+$table{$t}{"unbyte"}{$type}=$type;
+}
+}
+}
+
+# get request for bytes in and out
+
+foreach $t (keys %table)
+{
+@oids= keys (%{$table{$t}{"unbyte"}});
+if(@oids)
+{
+if (!defined $hash{$t}{"session"}) {
+               printf "ERROR: %s.\n", $error;
+      exit 1;
+      }
+while(@oids)
+{
+
+if (!defined $hash{$t}{"session"}->get_request(
+         -varbindlist => [splice @oids, 0, 40],
+         -callback    => [ \&oid_bytes,$table{$t}{"ip"},$table{$t}{"port"},$table{$t}{"community"}]))
+{
+   printf "ERROR: %s.\n", $hash{$t}{"session"}->error();
+}
+}
+}
+}
+snmp_dispatcher();
+
+
+print Dumper \%table;
+
+#call back routines
+sub oid_bytes
+{
+   my ($session,$ip,$port,$community) = @_;
+if (!defined $session->var_bind_list()) {
+      printf "ERROR: %s.\n", $session->error();
+   } else {
+      for ($session->var_bind_names()) {
+        # printf "%s => %s\n", $_, $session->var_bind_list()->{$_};
+my @sp=split('\.',$_);
+         $table{"$ip:$port:$community"}{'byte'}{$sp[10]}{$_}=$session->var_bind_list()->{$_};
+      }
+   }
+
+return;
+} 
+
+sub oid_request
+{
+   my ($session,$ip,$port,$community) = @_;
+if (!defined $session->var_bind_list()) {
+      printf "ERROR: %s.\n", $session->error();
+   } else {
+      for ($session->var_bind_names()) {
+        # printf "%s => %s\n", $_, $session->var_bind_list()->{$_};
+my @sp=split('\.',$_);
+         $table{"$ip:$port:$community"}{'request'}{$sp[10]}{$_}=$session->var_bind_list()->{$_};
+      }
+   }
+
+return;
+}
+
+sub print_interface_table
+{
+   my ($session,$ip,$port,$community) = @_;
+
+   if (!defined $session->var_bind_list()) {
+      printf "ERROR: %s.\n", $session->error();
+   } else {
+      for ($session->var_bind_names()) {
+        # printf "%s => %s\n", $_, $session->var_bind_list()->{$_};
+
+         $table{"$ip:$port:$community"}{'interfaces'}{$session->var_bind_list()->{$_}}=$session->var_bind_list()->{$_};
+      }
+   }
+
+   return;
+}
+

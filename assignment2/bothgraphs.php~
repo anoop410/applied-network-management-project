@@ -1,0 +1,168 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="1000000000000000">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Free Responsive Template #4 - Quality Co</title>
+<!-- css3-mediaqueries.js for IE8 or older -->
+<!--[if lt IE 9]>
+	<script src="http://css3-mediaqueries-js.googlecode.com/svn/trunk/css3-mediaqueries.js"></script>
+<![endif]-->
+<link href="css/styles.css" rel="stylesheet" type="text/css">
+</head>
+
+
+<body>
+
+  <header class="container">
+    <h1>Assignment2</h1>
+    <nav>
+        <ul id="navlist">
+         <li><a href="index.php">Add a Device</a></li>
+            <li><a href="delete.php">Delete Device</a></li>
+		 <li><a href="monitorboth.php">Details</a></li>
+        </ul>
+    </nav>
+  </header>
+  
+    <section class="container" style="text-align: center">
+            	    	
+        <td style="background-color:#eeeeee;height:600px;width:2000px;vertical-align:top;">
+        <center><br>   
+        
+        <?php
+        $path = dirname(__FILE__);
+        $now = time(); $ID = array();
+        $rrd = array("--slope-mode",
+                     "--start","-1h",
+                     "--end",$now,"--vertical-label", "Bytes per sec");
+       $m = $_POST['metric'];
+            $servermetric = $_POST['servermetric'];
+            $server = $_POST['server'];
+            $serverlist = implode(',',$server);
+ 
+      $rrd = array("--slope-mode",
+                                "--start","-1h",
+                              "--end",$now, "--vertical-label", "Bytes per sec");
+                        
+       $z=1;
+               
+            
+            $m = $_POST['metric']; $int = array(); $diff = array();
+            if($m){
+            echo "Graphs for selected network devices<br>";
+            if($_POST['select_countnetwork'])
+              {
+                $count = $_POST['select_countnetwork'];
+                for($f=1;$f<$count;$f++)
+                 {
+                   $i = $_POST["device$f"];
+                   $dev = $_POST["dev$f"];
+                   $intlist = $_POST["interfaces$f"];
+                   $list = explode(',',$intlist);
+                   $n = implode(',',$i);
+                   array_push($int,$n);
+                   array_push($diff,$dev);
+                 }
+                foreach ($m as $metric){
+                  for($x=0;$x<count($int);$x++)
+                   {
+                     $ID = array();$OD = array();
+                     $interfaces = explode(',',$int[$x]);
+                                      
+                                          
+                     foreach ($interfaces as $i)
+                      {
+                         if($i==$interfaces[0]){
+                          $c = "$metric$z" . "$i";
+                           }
+                        else{
+                          $c = "$metric$z" . "$i".",+";
+                          }
+                          array_push($ID,$c);
+
+                    
+                        $color = str_pad( dechex( mt_rand(0,0xFFFFFF) ),6,'0',STR_PAD_LEFT);
+                       $s1 = "DEF:$metric$z" . "$i=$diff[$x].rrd:$metric"."$i:AVERAGE";
+                  
+                      $s2 = "LINE:$metric$z" . "$i#$color:$metric" . "$i-$diff[$x]";
+                      $s3 = "GPRINT:$metric$z$i:LAST:Current $metric$z$i = %6.2lf bps";
+                       array_push($rrd,$s1,$s2,$s3);
+                       $z++;
+                      }  
+                      
+                      $difference = array_diff($list,$i);
+                       foreach($difference as $a){
+                       $a1 = "DEF:$metric$z" . "$a=$diff[$x].rrd:$metric$z"."$a:AVERAGE";
+                      array_push($rrd,$a1);
+                      
+                               }
+                     $ICDEF = join(',',$ID);
+                           
+                     $color = str_pad( dechex( mt_rand(0,0xFFFFFF) ),6,'0',STR_PAD_LEFT);       
+                     array_push($rrd,"CDEF:$metric$z=$ICDEF",
+"LINE:$metric$z#$color:Aggregate $metric-$diff[$x]",
+"GPRINT:$metric$z:LAST:Current Aggregate $metric = %6.2lf %sbps");
+                                     
+                   } 
+                 }
+                     }            
+               
+               $ret1 = rrd_graph("$path/consolidated.png",$rrd);
+
+               echo"<br><img src='consolidated.php'/><br>";            
+                 }
+               if($servermetric){
+               echo "<br>Graphs for selected servers<br>";
+               foreach($servermetric as $bytes)
+                     {
+                        echo "<br>Graph for $bytes<br>";
+
+                        $path = dirname(__FILE__);
+                        $now = time();
+                        $name=$bytes;
+                        if($name =="CPU")
+                        {
+                         $label = "sec";
+                        }
+                        elseif($name =="REQ_SEC")
+                        {
+                        $label = "Req/sec";
+                        }
+                        elseif($name =="BYTES_SEC")
+                        {
+                        $label = "B/sec";
+                        }
+                        elseif($name =="BYTES_REQ")
+                         {
+                         $label = "B/req";
+                         }
+
+                        $rrd1 = array("--slope-mode",
+                        "--start","-1h",
+                        "--end",$now,"--vertical-label",$label);
+                        $z=1;
+                        ##print_r($d);
+                        foreach($server as $a){
+                        $color = str_pad( dechex( mt_rand(0,0xFFFFFF) ),6,'0',STR_PAD_LEFT);
+                        array_push($rrd1,"DEF:$name$z=$path/$a.rrd:$name:AVERAGE",
+                                    "LINE:$name$z#$color:$name-$a","GPRINT:$name$z:LAST:Current $name = %6.2lf $label");
+                        $z = $z+ 1;
+                        }
+  
+                        $ret1 = rrd_graph("$path/$name.png",$rrd1); 
+                        echo"<br><img src='graph3s.php?name=$name'/><br>";
+                     }          
+
+                                             
+               #echo"<br><img src='consolidated.php'/><br>";
+            
+           }
+          
+          ?>   
+        </table>
+        </div>
+        </body>
+</html>        

@@ -1,0 +1,25 @@
+#! /usr/local/bin/perl
+
+#   use strict;
+#use warnings;
+require "dbpath.pl";
+require "$realpath";
+use DBI;
+use Data::Dumper qw(Dumper);
+use Net::SNMP::Interfaces;
+use Net::SNMP qw(:snmp);
+
+
+#database connection 
+my %hash;
+$dsn = "DBI:mysql:database=$database;host=$hostname;port=$port";
+$dbh = DBI->connect($dsn, $username, $password,{RaiseError => 1});
+#retrivind data from database
+my $hash = $dbh->selectall_hashref("SELECT * FROM DEVICES","id");
+ #print Dumper ($hash);
+# $h->selectall_hashref($statement, $keyfield [, \%attr [, @bind_params ] ]) foreach my $name (sort keys %grades) {
+#print Dumper \$hash;
+foreach(keys (%{$hash}))
+{
+print Dumper $hash->{$_};
+}

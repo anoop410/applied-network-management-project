@@ -1,0 +1,18 @@
+#!/bin/sh
+
+
+while :
+do
+	STARTTIME=$(date +%s)
+	perl ./device.pl
+	perl ./server.pl
+	ENDTIME=$(date +%s)
+
+	#scripttime=$(($ENDTIME-$STARTTIME))
+	#sleep_for=$((60 - $scripttime))
+	echo "==========="
+	echo "Script Run "
+	#echo "sleep for: 5"
+	
+	sleep 10
+done

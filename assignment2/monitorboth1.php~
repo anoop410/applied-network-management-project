@@ -1,0 +1,142 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Free Responsive Template #4 - Quality Co</title>
+<!-- css3-mediaqueries.js for IE8 or older -->
+<!--[if lt IE 9]>
+	<script src="http://css3-mediaqueries-js.googlecode.com/svn/trunk/css3-mediaqueries.js"></script>
+<![endif]-->
+<link href="css/styles.css" rel="stylesheet" type="text/css">
+</head>
+
+
+<body>
+
+  <header class="container">
+    <h1>Assignment2</h1>
+    <nav>
+        <ul id="navlist">
+          <li id="active"><a href="index.php">Home</a></li>
+            <li><a href="index.php">Add Devices</a></li>
+            <li><a href="delete.php">Delete Devices</a></li>
+            <li><a href="monitorboth.php">Details</a></li>
+        </ul>
+    </nav>
+  </header>
+  
+    <section class="container" style="text-align: center">
+            	    	
+        <td style="background-color:#eeeeee;height:600px;width:2000px;vertical-align:top;">
+<font face="Arial" size="3">
+        <center>   
+        <form action = "bothgraphs.php" method = "POST">
+        <?php
+        include "db.php";
+         
+         // connection to database
+         
+       ########################### For NETWORK DEVICES #####################
+          
+          
+          $c = $_POST['community'];
+          if($c){
+          echo "<br><br> Select the list of interfaces and metrics for the selected devices";
+          $in = array();
+          $z = 1;      
+          foreach($c as $y){
+           $w = explode('-',$y);
+           $COMMUNITY = $w[0]; $IP1 = $w[1] ; $PORT1 = $w[2];         // connection to database
+           $database = mysql_connect("$host:$port",$userid,$passwd)
+           or die ("Unable to connect to the Database");
+         
+           $connect = mysql_select_db("$name",$database)
+           or die ("Database could not be selected");
+           
+                  
+          $q1 = mysql_query("SELECT * FROM assign2_system WHERE COMMUNITY = '$COMMUNITY' && IP = '$IP1' && PORT = '$PORT1'");
+          
+          echo "<br><table border ='1'>
+               <tr><td> IP </td>
+                   <td> PORT </td>
+                   <td> COMMUNITY </td></tr>";         
+         
+         while($data = mysql_fetch_array($q1)):
+         {
+             $ID = $data[0]; $IP = $data[1]; $PORT = $data[2]; $COMMUNITY = $data[3]; $INTERFACES= $data[4];
+             
+             echo "<tr><td>" . "$IP" . "</td><td>" . "$PORT" . "</td><td>" . "$COMMUNITY" . "</td></tr>";                          
+         }
+         endwhile;
+         echo "</table>";
+         $in = array();
+         $i = explode("&",$INTERFACES);
+         echo "<br>Select the Interfaces of $COMMUNITY:";
+         echo "<br><table border = '1'><tr>";
+         array_push($in,$IP,$COMMUNITY,$PORT);
+         $n=implode('-',$in);
+         //echo "<td>";
+         //print_r($in);
+         //echo"</td>";
+         for ($y = 0; $y<count($i);$y++)
+         {
+            $a = "$i[$y]";
+            //print_r($in);
+            ?>
+       <td><input type = 'checkbox' name="device<?php echo $z;?>[]" value = "<?php echo $a ;?>"><?php echo $i[$y];?></td>
+       <input type='hidden' name="dev<?php echo $z;?>" value="<?php echo $n;?>">
+       <input type='hidden' name="interfaces<?php echo $z;?>" value="<?php echo $INTERFACES;?>">
+           <?php 
+         }                       
+         echo "</table>";     
+         mysql_close($database);
+         $z++;
+         }
+         echo "<br><br>Metric<br>";
+         echo "<table border ='1'>";
+         echo "<tr><td><input type = 'checkbox' name ='metric[]' value = Input> Inoctet </td>";
+         echo "<td><input type = 'checkbox' name ='metric[]' value = Output> Outoctet </td></tr>";
+         echo "</table><br>";
+                 }
+
+##################### For SERVERS ############################
+        
+        $sc = $_POST['server'];
+          if($sc){
+          $sz = 1;      
+          echo "<br>Selected servers<br>";
+           foreach($sc as $n){
+           $IPserver = $n;
+           $server = "$IPserver";
+          
+          echo "<table border ='1'>
+               <tr>
+                   <td> IP </td>
+                   </tr>";         
+         
+             
+             echo "<tr><td>" . "$IPserver</td></tr>";
+                 
+         
+         echo "</table><br>";
+        $sz++;
+         echo "<input type='hidden' name='server[]' value='$server'>";
+         }
+         echo "<table border ='1'>";
+         echo "<tr><td><input type = 'checkbox' name ='servermetric[]' value = CPU> CPU Usage </td>";
+         echo "<td><input type = 'checkbox' name ='servermetric[]' value = REQ_SEC> Requests/sec </td>";
+         echo "<td><input type = 'checkbox' name ='servermetric[]' value = BYTES_SEC> Bytes/sec </td>";
+         echo "<td><input type = 'checkbox' name ='servermetric[]' value = BYTES_REQ> Bytes/Requests </td></tr>";
+         echo "</table><br>";
+        }                  
+                   
+         ?>
+        <input type='hidden' name='select_countnetwork' value="<?php echo $z;?>">
+        <input type='hidden' name='select_countserver' value="<?php echo $sz;?>">
+        <input type = "submit" value = "Monitor">
+ 
+        </table>
+        </div>
+        </body>
+</html>        

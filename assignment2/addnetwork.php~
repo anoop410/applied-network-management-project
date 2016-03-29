@@ -1,0 +1,130 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Free Responsive Template #4 - Quality Co</title>
+<!-- css3-mediaqueries.js for IE8 or older -->
+<!--[if lt IE 9]>
+	<script src="http://css3-mediaqueries-js.googlecode.com/svn/trunk/css3-mediaqueries.js"></script>
+<![endif]-->
+<link href="css/styles.css" rel="stylesheet" type="text/css">
+</head>
+
+
+<body>
+
+  <header class="container">
+    <h1>Assignment2</h1>
+    <nav>
+        <ul id="navlist">
+            <li><a href="index.php">Add a Device</a></li>
+            <li><a href="delete.php">Delete Device</a></li>
+		 <li><a href="monitorboth.php">Details</a></li>
+        </ul>
+    </nav>
+  </header>
+  
+    <section class="container" style="text-align: center">
+        <center><br>   
+        <form action = "addnetwork.php" method = "POST">
+        <table border = 1 width = 500 align = center cell padding = 10>
+        <tr><th Colspan = 2> Enter the device details </th></tr>
+        <tr><td> IP </td><td><input type= "tinytext"name = "IP" aria-describedby="number-format" required aria-required="true"></td></tr>
+        <tr><td> PORT </td><td><input type= "text" name = "PORT" aria-describedby="number-format" required aria-required="true"></td></tr>
+        <tr><td> COMMUNITY </td><td><input type= "text"name = "COMMUNITY" aria-describedby="number-format" required aria-required="true"></td></tr>
+        <tr></tr>
+        <tr><td colspan = 2 align = "center"><input type = "submit" name = "formsubmit" value = "ADD"></td></tr></tr> 
+        
+<?php
+
+
+
+
+if(!empty($_POST["ip"])) {
+ $x= $_POST["ip"]; $y=$_POST["port"]; $z=$_POST["community"]; 
+
+
+require "db.php";
+
+
+$conn = mysqli_connect($host,$userid, $passwd,$name,$port);
+
+// Check connection
+if (!$conn) {
+   die("Connection failed: " . mysqli_connect_error());
+}
+//echo "Connected successfully<br>";
+mysqli_select_db($conn,"$database");
+
+$query = mysqli_query($conn, $tbl); 
+if ($query === TRUE) {
+	#echo "<h3>blockedusers table created OK :) </h3>"; 
+} else {
+	echo "<h3>blockedusers table NOT created :( </h3>"; 
+}
+$sqls = "INSERT INTO assign2_system (IP,PORT,COMMUNITY)
+VALUES (\"$x\", \"$y\", \"$z\")";
+
+if (mysqli_query($conn, $sqls)) {
+    echo "New device $x--$y--$z added succesfully<br>\n";
+    $a = snmpwalk("$x:$y", "$z", "1.3.6.1.2.1.2.2.1.1"); 
+if($a)
+{
+echo "<form id ='frm1' action='index.php' method='post'>";
+foreach ($a as $val) {
+    list($b,$c)=explode(" ", $val);
+   # echo "$c<br>";
+   echo "<input type='checkbox' name='interface[]' value=$x+$y+$z+$c> $c<br>";
+}
+}
+else{echo "device unreachable\n";}
+echo "<input type='checkbox' name='intereface[]' onclick='checkedAll(frm1);'>selectAll<br>";
+echo "<input type=submit value='monitor interfaces'>";
+echo "</form>";
+} else {
+ echo "error device already exists\n";
+    echo "Error: " . $sqls . "<br>" . mysqli_error($conn);
+}
+}
+
+if(!empty($_POST["interface"])) 
+							{
+							
+							$interfacearray=array();
+									foreach($_POST["interface"] as $check2) 
+									{
+									list($r,$t,$y,$u)=explode("+", $check2);
+									#echo "$u";
+    array_push($interfacearray, "$u");
+    }
+    $joined= implode("&", $interfacearray);
+    #echo "$joined-$r-$t-$y";
+    require "db.php";
+
+
+$conn = mysqli_connect($host,$userid, $passwd,$name,$port);
+
+// Check connection
+if (!$conn) {
+   die("Connection failed: " . mysqli_connect_error());
+}
+//echo "Connected successfully<br>";
+mysqli_select_db($conn,"$database");
+    $sqlu = "UPDATE assign2devices SET interfaces='$joined' WHERE IP=\"$r\" AND PORT =\"$t\" AND COMMUNITY=\"$y\"";
+
+if (mysqli_query($conn, $sqlu)) {
+    echo "interfaces added succesfully<br>";
+    
+} else {
+    echo "Error: " . $sqlu . "<br>" . mysqli_error($conn);
+}
+    }
+
+?>
+
+        </table>    
+        </table>
+        </div>
+        </body>
+</html>        

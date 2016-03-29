@@ -1,0 +1,45 @@
+#use strict;
+use DBI;
+use Cwd 'abs_path'; 
+#database connect
+$cwd = abs_path(__FILE__);
+#print $cwd;
+#Finding the path to db.conf
+@finding = split('/', $cwd);
+splice @finding, -2;
+push(@finding, 'db.conf');
+$realpath = join('/', @finding);
+
+#print "$realpath\n";
+require "$realpath";
+my $driver = "mysql";
+
+my $dsn = "DBI:$driver:$database:$hostname:$port";
+
+my $dbh = DBI->connect($dsn, $username, $password ) or die $DBI::errstr;
+
+system('sudo mkdir /var/www/mrtg');
+system('sudo mkdir /etc/mrtg');
+my $i=1;
+my @add1;
+my $add;
+my $add3;
+my $add4="sudo cfgmaker --output=/etc/mrtg/mrtg.cfg --global \"WorkDir: /var/www/mrtg\" --global \"Options[_]: growright,bits\" --global \"RunAsDaemon: Yes\"  --global \"Interval: 5\" ";
+#database fetching
+my $sth = $dbh->prepare("SELECT IP, PORT, COMMUNITY FROM DEVICES ");
+$sth->execute() or die $DBI::errstr;
+
+while (my @row = $sth->fetchrow_array()) {
+   my ($ip, $port, $community ) = @row;
+   push(@add1, "$community\@$ip:$port");
+   $add3=join(' ',@add1);
+   }
+   
+   #print "@add1"."\n";
+   #print $add3;
+   $add .="$add4".' '."$add3";
+   print $add."\n";
+   system("$add");
+   system("sudo indexmaker --output=/var/www/mrtg/index.html /etc/mrtg/mrtg.cfg");
+
+system("sudo env LANG=C /usr/bin/mrtg /etc/mrtg/mrtg.cfg");

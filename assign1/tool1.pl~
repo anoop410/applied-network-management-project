@@ -1,0 +1,147 @@
+#! /usr/local/bin/perl
+
+#   use strict;
+#use warnings;
+require "dbpath.pl";
+require "$realpath";
+use DBI;
+use Net::SNMP qw(:snmp);
+
+my $OID_ifIndex = '1.3.6.1.2.1.2.2.1.1';
+my $OID_ifType = '1.3.6.1.2.1.2.2.1.3';
+my $OID_ifAdminStatus = '1.3.6.1.2.1.2.2.1.7';
+my $OID_ifOperStatus = '1.3.6.1.2.1.2.2.1.8'; 
+my $OID_ifMtu = '1.3.6.1.2.1.2.2.1.4';
+my $OID_ifSpeed = '1.3.6.1.2.1.2.2.1.5';
+
+$dsn = "DBI:mysql:database=$database;host=$hostname;port=$port";
+$dbh = DBI->connect($dsn, $username, $password,{RaiseError => 1});
+
+#retrivind data from database
+ $sth = $dbh->prepare("SELECT * FROM DEVICES");
+  $sth->execute();
+while (@row = $sth->fetchrow())
+{
+  $ip=$row[1];
+  $community=$row[3];
+  $port=$row[2];
+
+   my ($session, $error) = Net::SNMP->session(
+      -hostname    => $ip,
+      -community   => $community,
+      -port        => $port,
+      -nonblocking => 1,
+      -translate   => [-octetstring => 0],
+   );
+
+   if (!defined $session) {
+      printf "ERROR: %s.\n", $error;
+      exit 1;
+   }
+
+   my %table; # Hash to store the results
+
+   my $result = $session->get_next_request(
+      -varbindlist    => [ $OID_ifIndex],
+      -callback       => [ \&table_callback, \%table ],
+   );
+
+   if (!defined $result) {
+      printf "ERROR: %s\n", $session->error();
+      $session->close();
+      exit 1;
+   }
+
+   # Now initiate the SNMP message exchange.
+
+   snmp_dispatcher();
+
+ #  $session->close();
+
+   # Print the results, specifically formatting ifPhysAddress.
+ for my $oid (oid_lex_sort(keys %table)) {
+#printf "%s = %s\n", $oid, $table{$oid}; 
+}
+@inte = values(%table);
+foreach (@inte)
+{
+#print $_;
+#print "\n";
+push(@type,"$OID_ifType.$_","$OID_ifAdminStatus.$_","$OID_ifOperStatus.$_","$OID_ifMtu.$_","$OID_ifSpeed.$_");
+}
+foreach(@type)
+{
+#print $_;
+#print "\n";
+}
+
+#@inr=splice(@type, 0 , 50);
+
+my $res = $session->get_request(
+      -varbindlist    => @type,
+      -callback       => [\&type],
+   );
+ snmp_dispatcher();
+  
+exit 0;
+}
+
+#callback for if index
+
+sub table_callback
+   {
+      my ($session, $table) = @_;
+
+      my $list = $session->var_bind_list();
+
+      if (!defined $list) {
+         printf "ERROR: %s\n", $session->error();
+         return;
+      }
+
+      # Loop through each of the OIDs in the response and assign
+      # the key/value pairs to the reference that was passed with
+      # the callback.  Make sure that we are still in the table
+      # before assigning the key/values.
+
+      my @names = $session->var_bind_names();
+      my $next  = undef;
+
+      while (@names) {
+         $next = shift @names;
+         if (!oid_base_match($OID_ifIndex, $next)) {
+            return; # Table is done.
+         }
+         $table->{$next} = $list->{$next}; 
+      }
+
+      # Table is not done, send another request, starting at the last
+      # OBJECT IDENTIFIER in the response.  No need to include the
+      # calback argument, the same callback that was specified for the
+      # original request will be used.
+
+      my $result = $session->get_next_request(
+         -varbindlist    => [ $next ],
+      );
+
+      if (!defined $result) {
+         printf "ERROR: %s.\n", $session->error();
+      }
+
+      return;
+   }
+sub type
+   {
+     my $session = @_;
+print "JHIHAD\n";
+      my $res = $session->var_bind_list();
+      my @names=$session->var_bind_names();
+      foreach my $i(@names)
+{
+     
+
+      printf "The valveus for host '%s' is %s.\n",
+              $i, $res->{$i};
+}
+return;
+  }

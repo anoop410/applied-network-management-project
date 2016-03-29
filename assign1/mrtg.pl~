@@ -1,0 +1,49 @@
+#!usr/bin/perl
+#use warnings;
+require "dbpath.pl";
+require "$realpath";
+use DBI;
+#system("sudo apt-get update");
+#system("sudo apt-get install mrtg");
+
+system("sudo updatedb");
+#database connection
+
+$dsn = "DBI:mysql:database=$database;host=$hostname;port=$port";
+$dbh = DBI->connect($dsn, $username, $password,{RaiseError => 1});
+
+#retrivind data from database
+
+ $sth = $dbh->prepare("SELECT * FROM DEVICES");
+  $sth->execute();
+$common='cfgmaker --output /etc/mrtg/mrtg.cfg --global "WorkDir: /var/www/mrtg" --global "RunAsDaemon: yes" --global "Options[_]: bits,growright" --global "WriteExpires: Yes" --global "Interval: 5"  -- ifref=eth --ifdesc=name,nr';
+#fetchrow array
+
+while (@row = $sth->fetchrow())
+{
+  $common.=" $row[3]\@$row[1]:$row[2]";
+}
+#Directory on local host
+
+system('$common');
+system("sudo mkdir /etc/mrtg && sudo mv /etc/mrtg.cfg /etc/mrtg");
+
+system("sudo mkdir /var/www/mrtg");
+#indexmaker for mrtg
+system("sudo indexmaker --output=/var/www/mrtg/index.html /etc/mrtg/mrtg.cfg");
+=begin
+Open /etc/apache2/apache.conf and add the following lines in the section containing similar Directory directives:
+
+	Alias /mrtg "/var/www/mrtg/"
+	<Directory "/var/www/mrtg/">
+
+	        Options None
+
+	        AllowOverride None
+
+	        Require all granted
+	</Directory>
+=cut
+system("sudo service apache2 restart");
+system("sudo env LANG=C /usr/bin/mrtg /etc/mrtg/mrtg.cfg --logging /var/log/mrtg.log");
+

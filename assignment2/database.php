@@ -1,0 +1,45 @@
+<?php
+    include 'db.php';
+	
+$connect=mysql_connect($host,$userid,$passwd)
+           or die ("Could not connect to the Database");
+	    
+    	    
+// Create database
+    $sql="CREATE DATABASE IF NOT EXISTS $name";
+if (!mysql_query($sql))
+      {	      
+	echo "Error creating database: " . mysql_error($connect) ."\n";
+      }
+	  
+//connecting to the database
+        mysql_query("USE $name");
+   
+	    $sql="CREATE TABLE IF NOT EXISTS `assign2_system` (
+		  `ID` int(11) NOT NULL AUTO_INCREMENT,
+		  `IP` tinytext NOT NULL,
+		  `PORT` int(11) NOT NULL,
+		  `COMMUNITY` varchar(150) NOT NULL,
+		  `INTERFACES` text NOT NULL,
+		  PRIMARY KEY (ID)
+		) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ";
+	
+
+	  if (!mysql_query($sql))
+	    {
+	      echo "Error creating table: " . mysql_error($connect) ."\n";
+	    }	    
+	  
+	  $sql="CREATE TABLE IF NOT EXISTS `assign2servers` (
+		  `ID` int(11) NOT NULL AUTO_INCREMENT,
+		  `server` tinytext NOT NULL,
+		   PRIMARY KEY (ID)
+		) ENGINE=InnoDB DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ";
+		
+ if (!mysql_query($sql))
+	    {
+	      echo "Error creating table: " . mysql_error($connect) ."\n";
+	    }	
+ mysql_close($connect);
+
+?>
